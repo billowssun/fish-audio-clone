@@ -12,9 +12,14 @@ export default async function handler(req) {
   headers.delete('referer');
   
   // 注入阿里云 API Key
-  if (process.env.ALIYUN_API_KEY) {
-    headers.set('Authorization', `Bearer ${process.env.ALIYUN_API_KEY}`);
+  const apiKey = process.env.ALIYUN_API_KEY;
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: '服务端未配置 ALIYUN_API_KEY 环境变量，请在 Vercel 控制台设置。' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
+  headers.set('Authorization', `Bearer ${apiKey}`);
 
   const fetchOptions = {
     method: req.method,

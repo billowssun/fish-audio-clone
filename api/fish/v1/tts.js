@@ -14,9 +14,14 @@ export default async function handler(req) {
   headers.delete('referer');
   
   // 从服务端环境变量注入 API Key，实现对前端隐藏
-  if (process.env.FISH_AUDIO_API_KEY) {
-    headers.set('Authorization', `Bearer ${process.env.FISH_AUDIO_API_KEY}`);
+  const apiKey = process.env.FISH_AUDIO_API_KEY;
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: '服务端未配置 FISH_AUDIO_API_KEY 环境变量，请在 Vercel 控制台设置。' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
+  headers.set('Authorization', `Bearer ${apiKey}`);
 
   const fetchOptions = {
     method: req.method,
