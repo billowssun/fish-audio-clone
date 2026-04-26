@@ -190,8 +190,8 @@ export default function App() {
       }
 
       // 发起请求到 Fish Audio API
-      // 注意：这里使用纯前端直连。Fish Audio 官方接口默认允许跨域调用。
-      const response = await fetch('https://api.fish.audio/v1/tts', {
+      // 注意：使用 Vercel Edge 函数代理转发，解决跨域和 400 报错问题
+      const response = await fetch('/api/fish/v1/tts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey.trim()}`,
