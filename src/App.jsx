@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { encode } from '@msgpack/msgpack';
 import { 
   Key, 
   Upload, 
@@ -175,29 +176,50 @@ export default function App() {
     setAudioResultUrl(null);
 
     try {
-      // 组装 FormData 用于 multipart/form-data 请求
-      const formData = new FormData();
-      formData.append('text', targetText.trim());
-      formData.append('format', audioFormat);
-      formData.append('temperature', temperature.toString());
-      formData.append('top_p', topP.toString());
+    try {
+      let bodyData;
+      let contentType;
 
       if (cloneMode === 'zero_shot') {
-        formData.append('reference_text', referenceText.trim());
-        formData.append('reference_audio', referenceAudio);
+        // 对于带音频文件的请求，Fish Audio 严格要求使用 application/msgpack
+        const arrayBuffer = await referenceAudio.arrayBuffer();
+        const audioBytes = new Uint8Array(arrayBuffer);
+
+        const payload = {
+          text: targetText.trim(),
+          format: audioFormat,
+          temperature: temperature,
+          top_p: topP,
+          references: [
+            {
+              audio: audioBytes,
+              text: referenceText.trim()
+            }
+          ]
+        };
+        bodyData = encode(payload);
+        contentType = 'application/msgpack';
       } else {
-        formData.append('reference_id', referenceId.trim());
+        // 对于仅 reference_id 的请求，使用 JSON 即可
+        const payload = {
+          text: targetText.trim(),
+          format: audioFormat,
+          temperature: temperature,
+          top_p: topP,
+          reference_id: referenceId.trim()
+        };
+        bodyData = JSON.stringify(payload);
+        contentType = 'application/json';
       }
 
-      // 发起请求到 Fish Audio API
-      // 注意：使用 Vercel Edge 函数代理转发，解决跨域和 400 报错问题
+      // 发起请求到代理
       const response = await fetch('/api/fish/v1/tts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey.trim()}`,
-          // 不手动设置 Content-Type，让浏览器自动设置带 boundary 的 multipart/form-data
+          'Content-Type': contentType,
         },
-        body: formData
+        body: bodyData
       });
 
       if (!response.ok) {
