@@ -31,7 +31,9 @@ export default async function handler(req) {
     outFormData.append('file', audioFile);
     outFormData.append('model', model);
 
-    const targetUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/audio/transcriptions';
+    // Vercel 部署在美国，必须使用阿里云的国际节点
+    // 国内节点 dashscope.aliyuncs.com 无法从 Vercel 访问
+    const targetUrl = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/audio/transcriptions';
 
     const response = await fetch(targetUrl, {
       method: 'POST',
