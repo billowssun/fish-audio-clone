@@ -3,19 +3,17 @@ export const config = {
 };
 
 export default async function handler(req) {
-  // 当前文件的路径恰好对应前端的 /api/fish/v1/tts
-  // 我们直接将其转发给 https://api.fish.audio/v1/tts
-  const url = new URL(req.url);
-  const targetUrl = `https://api.fish.audio/v1/tts${url.search}`;
+  // 转发至阿里云 DashScope 的 OpenAI 兼容语音识别接口 (使用 SenseVoice)
+  const targetUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/audio/transcriptions';
 
   const headers = new Headers(req.headers);
   headers.delete('host');
   headers.delete('origin');
   headers.delete('referer');
   
-  // 从服务端环境变量注入 API Key，实现对前端隐藏
-  if (process.env.FISH_AUDIO_API_KEY) {
-    headers.set('Authorization', `Bearer ${process.env.FISH_AUDIO_API_KEY}`);
+  // 注入阿里云 API Key
+  if (process.env.ALIYUN_API_KEY) {
+    headers.set('Authorization', `Bearer ${process.env.ALIYUN_API_KEY}`);
   }
 
   const fetchOptions = {
@@ -25,11 +23,9 @@ export default async function handler(req) {
   };
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    // 将流式 body 完整读取为 Buffer，防止 fetch 自动使用 Transfer-Encoding: chunked
-    // 因为许多 Python 后端（FastAPI 等）在解析 multipart/form-data 时若没有 Content-Length 会直接报 400
+    // 读取完整流以计算 Content-Length，防止 Python 后端解析 multipart 报 400
     const bodyBuffer = await req.arrayBuffer();
     fetchOptions.body = bodyBuffer;
-    // 取消 duplex 参数，因为 body 已经不再是 stream
   }
 
   try {
