@@ -128,7 +128,7 @@ export default function App() {
       formData.append("file", referenceAudio);
       formData.append("model", "whisper-1");
 
-      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      const response = await fetch("/api/openai/v1/audio/transcriptions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${asrApiKey.trim()}`
@@ -190,8 +190,8 @@ export default function App() {
       }
 
       // 发起请求到 Fish Audio API
-      // 注意：这里使用纯前端直连。Fish Audio 官方接口默认允许跨域调用。
-      const response = await fetch('https://api.fish.audio/v1/tts', {
+      // 注意：这里使用纯前端直连。Fish Audio 官方接口默认允许跨域调用。但是为了适配 Vercel，使用本地代理。
+      const response = await fetch('/api/fish/v1/tts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey.trim()}`,
