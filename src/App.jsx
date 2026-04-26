@@ -75,7 +75,7 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // 自动识别参考音频文字 (调用自建阿里云代理)
+  // 自动识别参考音频文字 (调用 Groq Whisper 代理)
   const handleAutoRecognize = async () => {
     if (!referenceAudio) return setError("请先上传参考音频");
 
@@ -85,7 +85,8 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append("file", referenceAudio);
-      formData.append("model", "sensevoice-v1"); // 阿里云模型标识
+      // Groq Whisper 支持通过 prompt 引导模型输出标点符号
+      formData.append("prompt", "以下是一段中文语音，请完整转录并添加正确的标点符号。");
 
       const response = await fetch("/api/aliyun/asr", {
         method: "POST",
@@ -245,7 +246,7 @@ export default function App() {
             <Mic className="w-8 h-8 text-blue-600" />
             AI 声音克隆工作台 <span className="text-sm font-normal bg-blue-100 text-blue-700 py-1 px-2 rounded-md ml-2">Pro 版</span>
           </h1>
-          <p className="text-slate-500 mt-2">基于 Fish Audio 零样本克隆技术，极客专属配音工具。</p>
+          <p className="text-slate-500 mt-2">基于 Fish Audio 零样本克隆技术，让您的声音跨越时间与空间，赋予文字以生命。</p>
         </header>
 
         {/* 错误提示框 */}
@@ -266,13 +267,13 @@ export default function App() {
             
             <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
               <button onClick={() => setCloneMode('zero_shot')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${cloneMode === 'zero_shot' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                实时提取干声
+                上传声音
               </button>
               <button onClick={() => setCloneMode('reference_id')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${cloneMode === 'reference_id' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                官方/预设云端模型
+                精选音色
               </button>
               <button onClick={() => setCloneMode('my_voices')} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${cloneMode === 'my_voices' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                私人音色库
+                我的音色
               </button>
             </div>
           </div>
@@ -315,7 +316,7 @@ export default function App() {
                       <label className="block text-sm font-medium text-slate-700">2. 音频对应文字</label>
                       <button onClick={handleAutoRecognize} disabled={isRecognizing || !referenceAudio} className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${isRecognizing ? 'text-slate-400 bg-slate-100 cursor-not-allowed' : !referenceAudio ? 'text-slate-300' : 'text-blue-600 bg-blue-50 hover:bg-blue-100'}`}>
                         {isRecognizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                        {isRecognizing ? '识别中...' : '自动提取 (阿里云)'}
+                        {isRecognizing ? '识别中...' : '智能识别'}
                       </button>
                     </div>
                     <textarea value={referenceText} onChange={(e) => setReferenceText(e.target.value)} placeholder="可手动输入，或点击自动提取..." className="w-full flex-1 p-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
