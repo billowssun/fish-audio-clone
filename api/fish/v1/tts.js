@@ -20,8 +20,11 @@ export default async function handler(req) {
   };
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    fetchOptions.body = req.body;
-    fetchOptions.duplex = 'half';
+    // 将流式 body 完整读取为 Buffer，防止 fetch 自动使用 Transfer-Encoding: chunked
+    // 因为许多 Python 后端（FastAPI 等）在解析 multipart/form-data 时若没有 Content-Length 会直接报 400
+    const bodyBuffer = await req.arrayBuffer();
+    fetchOptions.body = bodyBuffer;
+    // 取消 duplex 参数，因为 body 已经不再是 stream
   }
 
   try {
