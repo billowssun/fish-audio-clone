@@ -176,7 +176,6 @@ export default function App() {
     setAudioResultUrl(null);
 
     try {
-    try {
       let bodyData;
       let contentType;
 
