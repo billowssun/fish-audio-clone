@@ -3,20 +3,20 @@ export const config = {
 };
 
 export default async function handler(req) {
-  // 注入阿里云 API Key
-  const apiKey = process.env.ALIYUN_API_KEY;
+  // 使用 Groq 的 Whisper API（免费、无区域限制、速度极快）
+  // 接口完全兼容 OpenAI Whisper 格式
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: '服务端未配置 ALIYUN_API_KEY 环境变量，请在 Vercel 控制台设置。' }), { 
+    return new Response(JSON.stringify({ error: '服务端未配置 GROQ_API_KEY 环境变量，请在 Vercel 控制台设置。' }), { 
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
   try {
-    // 从前端请求中解析 multipart/form-data，提取音频文件和模型参数
+    // 从前端请求中解析音频文件
     const formData = await req.formData();
     const audioFile = formData.get('file');
-    const model = formData.get('model') || 'sensevoice-v1';
 
     if (!audioFile) {
       return new Response(JSON.stringify({ error: '请求中缺少音频文件 (file 字段)' }), {
@@ -25,34 +25,29 @@ export default async function handler(req) {
       });
     }
 
-    // 重新构造一个干净的 FormData 发给阿里云
-    // 不手动设置 Content-Type，让 fetch 自动生成正确的 boundary
+    // 重新构造 FormData 发给 Groq
     const outFormData = new FormData();
     outFormData.append('file', audioFile);
-    outFormData.append('model', model);
+    outFormData.append('model', 'whisper-large-v3-turbo'); // Groq 最快、最准的 Whisper 模型
+    outFormData.append('response_format', 'json');
 
-    // Vercel 部署在美国，必须使用阿里云的国际节点
-    // 国内节点 dashscope.aliyuncs.com 无法从 Vercel 访问
-    const targetUrl = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/audio/transcriptions';
-
-    const response = await fetch(targetUrl, {
+    const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        // 不设置 Content-Type，让 fetch 自动处理
+        // 不设置 Content-Type，让 fetch 自动生成正确的 multipart boundary
       },
       body: outFormData,
     });
 
-    const resHeaders = new Headers();
-    resHeaders.set('Content-Type', 'application/json');
-    resHeaders.set('Access-Control-Allow-Origin', '*');
-
-    // 将阿里云返回的结果透传给前端
     const text = await response.text();
+    
     return new Response(text, {
       status: response.status,
-      headers: resHeaders,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
 
   } catch (err) {
