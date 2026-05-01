@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Upload, CheckCircle2, Trash2, Loader2, Sparkles, Bookmark } from 'lucide-react';
 
 export default function ZeroShotPanel({
@@ -5,6 +6,39 @@ export default function ZeroShotPanel({
   referenceText, onTextChange, onAutoRecognize, isRecognizing,
   voiceNameInput, onVoiceNameChange, onSaveVoice
 }) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      if (file.type && !file.type.startsWith('audio/')) {
+        return;
+      }
+      const syntheticEvent = { target: { files: [file] } };
+      onFileChange(syntheticEvent);
+    }
+  };
+
+  const handleClickUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -12,10 +46,16 @@ export default function ZeroShotPanel({
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-2">上传音频样本</label>
           <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={!referenceAudio ? handleClickUpload : undefined}
             className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer
               ${referenceAudio
                 ? 'border-blue-300 bg-blue-50/50'
-                : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                : isDragging
+                  ? 'border-blue-400 bg-blue-50 scale-[1.02]'
+                  : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
               }`}
           >
             <input type="file" accept="audio/mp3, audio/wav, audio/m4a, audio/ogg" className="hidden" ref={fileInputRef} onChange={onFileChange} />
@@ -30,12 +70,20 @@ export default function ZeroShotPanel({
                   <Trash2 className="w-4 h-4" /> 重新上传
                 </button>
               </div>
+            ) : isDragging ? (
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                  <Upload className="w-6 h-6 text-blue-500" />
+                </div>
+                <p className="text-sm font-medium text-blue-600">松开即可上传</p>
+                <p className="text-xs text-slate-400 mt-1">支持拖拽音频文件到此处</p>
+              </div>
             ) : (
-              <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center">
+              <div className="flex flex-col items-center">
                 <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                   <Upload className="w-6 h-6 text-slate-400" />
                 </div>
-                <p className="text-sm font-medium text-slate-500">点击上传音频文件</p>
+                <p className="text-sm font-medium text-slate-500">点击上传或拖拽文件到此处</p>
                 <p className="text-xs text-slate-400 mt-1">MP3 / WAV / M4A / OGG，5MB 以内</p>
               </div>
             )}

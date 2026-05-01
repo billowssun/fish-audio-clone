@@ -32,10 +32,10 @@ export default function AdvancedSettings({
                   }`}
               >
                 <div className="font-medium text-slate-800 mb-1 flex items-center justify-between">
-                  <span>Fish Speech V1</span>
+                  <span>快速引擎</span>
                   {model === 'fishaudio/fish-speech-1' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
                 </div>
-                <p className="text-xs text-slate-400">速度较快，适合常规配音任务。</p>
+                <p className="text-xs text-slate-400">处理速度快，适合批量配音和短文本生成。</p>
               </div>
 
               <div
@@ -47,10 +47,10 @@ export default function AdvancedSettings({
                   }`}
               >
                 <div className="font-medium text-slate-800 mb-1 flex items-center justify-between">
-                  <span>Fish Speech V1.5</span>
+                  <span>高保真引擎</span>
                   {model === 'fishaudio/fish-speech-1.5' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
                 </div>
-                <p className="text-xs text-slate-400">情感表现力更强，音色还原度极高。</p>
+                <p className="text-xs text-slate-400">情感表现力强，音色还原度高，推荐使用。</p>
               </div>
             </div>
           </div>
