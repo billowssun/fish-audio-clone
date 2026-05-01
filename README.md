@@ -1,9 +1,8 @@
-# Fish Audio Clone 🎙️
+# VoiceCanvas — AI 声音克隆
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbillowssun%2Ffish-audio-clone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-一个基于 [Fish Audio](https://fish.audio/) 的高保真语音克隆与文本转语音（TTS）Web 界面。旨在提供媲美官方体验的私有化部署方案，支持自定义声音模型管理与 Groq Whisper ASR 语音识别。
+高保真 AI 语音克隆与文本转语音（TTS）工作台。上传一段音频，AI 精准学习声音特征，用你的声音表达任何文字。支持私有化部署，数据安全可控。
 
 ---
 

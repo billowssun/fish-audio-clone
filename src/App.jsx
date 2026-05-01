@@ -49,7 +49,7 @@ export default function App() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setError("参考音频文件过大，请上传 5MB 以内的文件");
+        setError("音频文件过大，请上传 5MB 以内的文件");
         return;
       }
       setReferenceAudio(file);
@@ -63,7 +63,7 @@ export default function App() {
   };
 
   const handleAutoRecognize = async () => {
-    if (!referenceAudio) return setError("请先上传参考音频");
+    if (!referenceAudio) return setError("请先上传音频");
 
     setIsRecognizing(true);
     setError(null);
@@ -98,7 +98,7 @@ export default function App() {
         voiceName: voiceNameInput
       });
       setVoiceNameInput('');
-      alert("音色已保存到您的私人音色库！");
+      alert("音色已保存到你的私人音色库！");
     } catch (err) {
       console.error(err);
       setError("保存音色失败：" + err.message);
@@ -150,24 +150,22 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
+      <div className="min-h-screen p-4 md:p-8">
         <div className="max-w-4xl mx-auto space-y-6">
 
           <Header />
           <ErrorBanner message={error} />
 
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <section className="card p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <FileAudio className="w-5 h-5 text-slate-400" />
-                配音创作面板
+              <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <FileAudio className="w-4 h-4 text-blue-500" />
+                配音创作
               </h2>
-
               <CloneModeTabs mode={cloneMode} onChange={setCloneMode} />
             </div>
 
-            <div className="space-y-6">
-
+            <div className="space-y-5">
               {cloneMode === 'zero_shot' && (
                 <ZeroShotPanel
                   referenceAudio={referenceAudio}
