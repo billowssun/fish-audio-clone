@@ -41,7 +41,7 @@ export default async function handler(req) {
     const response = await fetch(targetUrl, fetchOptions);
     
     const resHeaders = new Headers(response.headers);
-    resHeaders.set('Access-Control-Allow-Origin', '*');
+    resHeaders.set('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
 
     return new Response(response.body, {
       status: response.status,

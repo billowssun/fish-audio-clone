@@ -14,6 +14,16 @@ export default async function handler(req) {
   }
 
   try {
+    // 限制请求体大小，防止资源耗尽（Groq Whisper 上限 ~25MB）
+    const contentLength = parseInt(req.headers.get('content-length') || '0');
+    const maxSize = 25 * 1024 * 1024;
+    if (contentLength > maxSize) {
+      return new Response(JSON.stringify({ error: '音频文件过大，请上传 25MB 以内的文件' }), {
+        status: 413,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // 从前端请求中解析音频文件
     const formData = await req.formData();
     const audioFile = formData.get('file');
@@ -46,7 +56,7 @@ export default async function handler(req) {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
       },
     });
 

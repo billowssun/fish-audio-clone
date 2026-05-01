@@ -3,7 +3,7 @@
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbillowssun%2Ffish-audio-clone)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-一个基于 [Fish Audio](https://fish.audio/) 的高保真语音克隆与文本转语音（TTS）Web 界面。旨在提供媲美官方体验的私有化部署方案，支持自定义声音模型管理与阿里云 SenseVoice ASR 语音识别。
+一个基于 [Fish Audio](https://fish.audio/) 的高保真语音克隆与文本转语音（TTS）Web 界面。旨在提供媲美官方体验的私有化部署方案，支持自定义声音模型管理与 Groq Whisper ASR 语音识别。
 
 ---
 
@@ -11,7 +11,7 @@
 
 - **🚀 高性能 TTS**: 调用 Fish Audio 最新 API (v1)，支持流式输出与多种音频格式。
 - **🎙️ 语音克隆**: 支持上传参考音频，快速生成独有的声音克隆模型。
-- **🧠 智能识别**: 集成阿里云 DashScope SenseVoice ASR，提供精准的语音转文字服务，辅助生成参考文本。
+- **🧠 智能识别**: 集成 Groq Whisper ASR，提供精准的语音转文字服务，辅助生成参考文本。
 - **📂 本地模型库**: 利用 IndexedDB (localforage) 在浏览器本地存储您常用的声音模型，安全且便捷。
 - **🎨 现代 UI**: 使用 React 19 + Tailwind CSS 4 构建，响应式设计，适配桌面与移动端。
 - **🔒 安全隐私**: 通过 Vercel Edge Functions 实现 API 中转，前端代码不泄露您的 API Key。
@@ -24,7 +24,7 @@
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **State/Storage**: [LocalForage](https://localforage.github.io/localForage/) (IndexedDB)
 - **Deployment**: [Vercel](https://vercel.com/) (Edge Functions)
-- **APIs**: Fish Audio API, Alibaba Cloud DashScope (SenseVoice)
+- **APIs**: Fish Audio API, Groq (Whisper)
 
 ---
 
@@ -47,8 +47,8 @@ npm install
 # Fish Audio API Key (前往 https://fish.audio/ 申请)
 FISH_AUDIO_API_KEY=your_fish_audio_api_key
 
-# 阿里云 API Key (前往阿里云 DashScope 申请)
-ALIYUN_API_KEY=your_aliyun_api_key
+# Groq API Key (前往 https://console.groq.com/ 申请，用于语音识别)
+GROQ_API_KEY=your_groq_api_key
 ```
 
 ### 4. 启动开发服务器
@@ -66,7 +66,7 @@ npm run dev
 2. 在 Vercel 后台导入项目。
 3. **关键步骤**: 在 Vercel 项目设置的 **Environment Variables** 中添加以下变量：
    - `FISH_AUDIO_API_KEY`
-   - `ALIYUN_API_KEY`
+   - `GROQ_API_KEY`
 4. 点击部署。
 
 ---
@@ -76,9 +76,11 @@ npm run dev
 ```text
 fish-audio-clone/
 ├── api/                # Vercel Edge Functions (API 代理)
-│   ├── aliyun/asr.js   # 阿里云 ASR 代理
+│   ├── aliyun/asr.js   # Groq Whisper ASR 代理
 │   └── fish/v1/tts.js  # Fish Audio TTS 代理
 ├── src/                # 前端源代码
+│   ├── components/     # UI 组件
+│   ├── hooks/          # 自定义 hooks
 │   ├── App.jsx         # 主界面逻辑
 │   └── main.jsx        # 入口文件
 ├── public/             # 静态资源

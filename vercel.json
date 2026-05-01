@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/openai/:match*",
-      "destination": "https://api.openai.com/:match*"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
