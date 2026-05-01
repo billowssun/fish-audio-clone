@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { Sparkles, Database, Briefcase, Film, BookOpen, Gamepad2, Users, Heart, Play, Pause, ChevronDown } from 'lucide-react';
+import VoiceExplorer from './VoiceExplorer';
+import { proxyAudioUrl } from '../utils/proxy';
 
 const INITIAL_COUNT = 6;
 
@@ -86,7 +88,7 @@ export default function ReferenceIdPanel({ referenceId, onChange }) {
       audioRef.current.pause();
     }
 
-    const audio = new Audio(sampleUrl);
+    const audio = new Audio(proxyAudioUrl(sampleUrl));
     audioRef.current = audio;
     audio.onended = () => setPlayingId(null);
     audio.onerror = () => setPlayingId(null);
@@ -190,6 +192,8 @@ export default function ReferenceIdPanel({ referenceId, onChange }) {
           className="input-minimal text-sm"
         />
       </div>
+
+      <VoiceExplorer onSelect={(id) => onChange(id)} />
     </div>
   );
 }
