@@ -2,7 +2,39 @@ export const config = {
   runtime: 'edge',
 };
 
+function rejectInvalidOrigin(req) {
+  const allowedOrigin = process.env.ALLOWED_ORIGIN;
+  if (!allowedOrigin) return null;
+
+  const origin = req.headers.get('origin');
+  if (origin !== allowedOrigin) {
+    return new Response(JSON.stringify({ error: 'Forbidden origin' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': allowedOrigin,
+      },
+    });
+  }
+
+  return null;
+}
+
 export default async function handler(req) {
+  const originError = rejectInvalidOrigin(req);
+  if (originError) return originError;
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
   // 当前文件的路径恰好对应前端的 /api/fish/v1/tts
   // 我们直接将其转发给 https://api.fish.audio/v1/tts
   const url = new URL(req.url);

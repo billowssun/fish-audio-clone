@@ -1,12 +1,55 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
+function fishAudioDevProxy() {
+  const allowedHosts = new Set(['platform.r2.fish.audio', 'cdn.fish.audio'])
+
+  return {
+    name: 'fish-audio-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use('/api/fish/audio', async (req, res) => {
+        try {
+          const requestUrl = new URL(req.url || '', 'http://localhost')
+          const targetUrl = requestUrl.searchParams.get('url')
+
+          if (!targetUrl) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Missing url parameter' }))
+            return
+          }
+
+          const parsedTarget = new URL(targetUrl)
+          if (!allowedHosts.has(parsedTarget.hostname)) {
+            res.statusCode = 403
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Forbidden host' }))
+            return
+          }
+
+          const response = await fetch(targetUrl)
+          res.statusCode = response.status
+          res.setHeader('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg')
+          res.setHeader('Cache-Control', 'public, max-age=86400')
+
+          const body = Buffer.from(await response.arrayBuffer())
+          res.end(body)
+        } catch (err) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ error: err.message }))
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react()],
+    plugins: [fishAudioDevProxy(), react()],
     server: {
       proxy: {
         '/api/fish/v1/tts': {
@@ -30,22 +73,6 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => {
             const query = path.includes('?') ? path.slice(path.indexOf('?')) : ''
             return '/model' + query
-          },
-        },
-        '/api/fish/audio': {
-          target: 'https://platform.r2.fish.audio',
-          changeOrigin: true,
-          rewrite: (path) => {
-            const qIdx = path.indexOf('?')
-            if (qIdx < 0) return '/'
-            const params = new URLSearchParams(path.slice(qIdx))
-            const audioUrl = params.get('url')
-            if (!audioUrl) return '/'
-            try {
-              return new URL(audioUrl).pathname
-            } catch {
-              return '/'
-            }
           },
         },
         '/api/aliyun/asr': {

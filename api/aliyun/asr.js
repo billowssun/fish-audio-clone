@@ -2,7 +2,39 @@ export const config = {
   runtime: 'edge',
 };
 
+function rejectInvalidOrigin(req) {
+  const allowedOrigin = process.env.ALLOWED_ORIGIN;
+  if (!allowedOrigin) return null;
+
+  const origin = req.headers.get('origin');
+  if (origin !== allowedOrigin) {
+    return new Response(JSON.stringify({ error: 'Forbidden origin' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': allowedOrigin,
+      },
+    });
+  }
+
+  return null;
+}
+
 export default async function handler(req) {
+  const originError = rejectInvalidOrigin(req);
+  if (originError) return originError;
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
   // 使用 Groq 的 Whisper API（免费、无区域限制、速度极快）
   // 接口完全兼容 OpenAI Whisper 格式
   const apiKey = process.env.GROQ_API_KEY;
@@ -27,10 +59,18 @@ export default async function handler(req) {
     // 从前端请求中解析音频文件
     const formData = await req.formData();
     const audioFile = formData.get('file');
+    const prompt = formData.get('prompt');
 
     if (!audioFile) {
       return new Response(JSON.stringify({ error: '请求中缺少音频文件 (file 字段)' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (audioFile.size > maxSize) {
+      return new Response(JSON.stringify({ error: '音频文件过大，请上传 25MB 以内的文件' }), {
+        status: 413,
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -40,6 +80,9 @@ export default async function handler(req) {
     outFormData.append('file', audioFile);
     outFormData.append('model', 'whisper-large-v3-turbo'); // Groq 最快、最准的 Whisper 模型
     outFormData.append('response_format', 'json');
+    if (typeof prompt === 'string' && prompt.trim()) {
+      outFormData.append('prompt', prompt.trim());
+    }
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',

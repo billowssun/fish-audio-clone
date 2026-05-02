@@ -62,7 +62,7 @@ export default function useTTS() {
         let errorMsg = `HTTP Error ${response.status}`;
         try {
           const errorData = await response.json();
-          errorMsg = errorData.message || errorData.detail || errorMsg;
+          errorMsg = errorData.message || errorData.detail || errorData.error || errorMsg;
         } catch { /* response may not be JSON, use default error message */ }
         throw new Error(`API 请求失败: ${errorMsg}`);
       }
