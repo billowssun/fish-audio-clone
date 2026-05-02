@@ -13,11 +13,14 @@ export default async function handler(req) {
     });
   }
 
-  // 允许的域名白名单
-  const allowedHosts = ['platform.r2.fish.audio', 'cdn.fish.audio'];
+  // Only proxy Fish Audio-owned HTTPS assets. Fish may return different
+  // subdomains for public samples, so keep the boundary at the parent domain.
   try {
-    const targetHost = new URL(targetUrl).hostname;
-    if (!allowedHosts.includes(targetHost)) {
+    const parsedTarget = new URL(targetUrl);
+    const targetHost = parsedTarget.hostname;
+    const isFishAudioHost = targetHost === 'fish.audio' || targetHost.endsWith('.fish.audio');
+
+    if (parsedTarget.protocol !== 'https:' || !isFishAudioHost) {
       return new Response(JSON.stringify({ error: 'Forbidden host' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

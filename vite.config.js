@@ -2,8 +2,6 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 function fishAudioDevProxy() {
-  const allowedHosts = new Set(['platform.r2.fish.audio', 'cdn.fish.audio'])
-
   return {
     name: 'fish-audio-dev-proxy',
     configureServer(server) {
@@ -20,7 +18,9 @@ function fishAudioDevProxy() {
           }
 
           const parsedTarget = new URL(targetUrl)
-          if (!allowedHosts.has(parsedTarget.hostname)) {
+          const isFishAudioHost = parsedTarget.hostname === 'fish.audio' || parsedTarget.hostname.endsWith('.fish.audio')
+
+          if (parsedTarget.protocol !== 'https:' || !isFishAudioHost) {
             res.statusCode = 403
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ error: 'Forbidden host' }))
