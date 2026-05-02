@@ -1,84 +1,47 @@
+import { corsHeaders, handleOptions, jsonResponse, rejectInvalidMethod, rejectInvalidOrigin } from '../_shared.js';
+
 export const config = {
   runtime: 'edge',
 };
-
-function rejectInvalidOrigin(req) {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN;
-  if (!allowedOrigin) return null;
-
-  const origin = req.headers.get('origin');
-  if (origin !== allowedOrigin) {
-    return new Response(JSON.stringify({ error: 'Forbidden origin' }), {
-      status: 403,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': allowedOrigin,
-      },
-    });
-  }
-
-  return null;
-}
 
 export default async function handler(req) {
   const originError = rejectInvalidOrigin(req);
   if (originError) return originError;
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+    return handleOptions(['POST', 'OPTIONS']);
   }
 
-  // 使用 Groq 的 Whisper API（免费、无区域限制、速度极快）
-  // 接口完全兼容 OpenAI Whisper 格式
+  const methodError = rejectInvalidMethod(req, ['POST']);
+  if (methodError) return methodError;
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: '服务端未配置 GROQ_API_KEY 环境变量，请在 Vercel 控制台设置。' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return jsonResponse({ error: '服务端未配置 GROQ_API_KEY 环境变量，请在 Vercel 控制台设置。' }, 401);
   }
 
   try {
-    // 限制请求体大小，防止资源耗尽（Groq Whisper 上限 ~25MB）
     const contentLength = parseInt(req.headers.get('content-length') || '0');
     const maxSize = 25 * 1024 * 1024;
     if (contentLength > maxSize) {
-      return new Response(JSON.stringify({ error: '音频文件过大，请上传 25MB 以内的文件' }), {
-        status: 413,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return jsonResponse({ error: '音频文件过大，请上传 25MB 以内的文件' }, 413);
     }
 
-    // 从前端请求中解析音频文件
     const formData = await req.formData();
     const audioFile = formData.get('file');
     const prompt = formData.get('prompt');
 
     if (!audioFile) {
-      return new Response(JSON.stringify({ error: '请求中缺少音频文件 (file 字段)' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return jsonResponse({ error: '请求中缺少音频文件 (file 字段)' }, 400);
     }
 
     if (audioFile.size > maxSize) {
-      return new Response(JSON.stringify({ error: '音频文件过大，请上传 25MB 以内的文件' }), {
-        status: 413,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return jsonResponse({ error: '音频文件过大，请上传 25MB 以内的文件' }, 413);
     }
 
-    // 重新构造 FormData 发给 Groq
     const outFormData = new FormData();
     outFormData.append('file', audioFile);
-    outFormData.append('model', 'whisper-large-v3-turbo'); // Groq 最快、最准的 Whisper 模型
+    outFormData.append('model', 'whisper-large-v3-turbo');
     outFormData.append('response_format', 'json');
     if (typeof prompt === 'string' && prompt.trim()) {
       outFormData.append('prompt', prompt.trim());
@@ -87,27 +50,22 @@ export default async function handler(req) {
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        // 不设置 Content-Type，让 fetch 自动生成正确的 multipart boundary
+        Authorization: `Bearer ${apiKey}`,
       },
       body: outFormData,
     });
 
     const text = await response.text();
-    
+
     return new Response(text, {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
+        ...corsHeaders(),
       },
     });
-
   } catch (err) {
     console.error('ASR proxy error:', err);
-    return new Response(JSON.stringify({ error: err.message }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return jsonResponse({ error: err.message }, 500);
   }
 }

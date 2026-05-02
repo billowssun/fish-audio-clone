@@ -1,11 +1,21 @@
+import { corsHeaders, handleOptions, jsonResponse, rejectInvalidMethod, rejectInvalidOrigin } from '../_shared.js';
+
 export const config = {
   runtime: 'edge',
 };
 
 export default async function handler(req) {
-  const url = new URL(req.url);
+  const originError = rejectInvalidOrigin(req);
+  if (originError) return originError;
 
-  // 构造目标请求
+  if (req.method === 'OPTIONS') {
+    return handleOptions(['GET', 'OPTIONS']);
+  }
+
+  const methodError = rejectInvalidMethod(req, ['GET']);
+  if (methodError) return methodError;
+
+  const url = new URL(req.url);
   const targetParams = new URLSearchParams();
   for (const [key, value] of url.searchParams) {
     targetParams.set(key, value);
@@ -16,7 +26,7 @@ export default async function handler(req) {
   try {
     const response = await fetch(targetUrl, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
     });
 
@@ -26,14 +36,10 @@ export default async function handler(req) {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
-        'Cache-Control': 'public, max-age=300',
+        ...corsHeaders({ 'Cache-Control': 'public, max-age=300' }),
       },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: err.message }, 500);
   }
 }

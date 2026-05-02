@@ -11,6 +11,7 @@ import AdvancedSettings from './components/AdvancedSettings';
 import GenerateButton from './components/GenerateButton';
 import ResultPlayer from './components/ResultPlayer';
 import ErrorBoundary from './components/ErrorBoundary';
+import GenerationHistory from './components/GenerationHistory';
 import useLocalVoices from './hooks/useLocalVoices';
 import useTTS from './hooks/useTTS';
 
@@ -34,8 +35,10 @@ export default function App() {
   const [error, setError] = useState(null);
   const [audioResultUrl, setAudioResultUrl] = useState(null);
   const [downloadTimestamp, setDownloadTimestamp] = useState(null);
+  const [generationHistory, setGenerationHistory] = useState([]);
 
   const fileInputRef = useRef(null);
+  const historyUrlsRef = useRef([]);
   const { savedVoices, saveVoice: persistVoice, deleteVoice: removeVoice } = useLocalVoices();
   const { generate, isLoading } = useTTS();
 
@@ -44,6 +47,12 @@ export default function App() {
       if (audioResultUrl) URL.revokeObjectURL(audioResultUrl);
     };
   }, [audioResultUrl]);
+
+  useEffect(() => {
+    return () => {
+      historyUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -139,13 +148,33 @@ export default function App() {
         topP
       });
 
+      const timestamp = Date.now();
       const audioUrl = URL.createObjectURL(audioBlob);
+      const historyAudioUrl = URL.createObjectURL(audioBlob);
+      historyUrlsRef.current.push(historyAudioUrl);
+
       setAudioResultUrl(audioUrl);
-      setDownloadTimestamp(Date.now());
+      setDownloadTimestamp(timestamp);
+      setGenerationHistory(prev => [
+        {
+          id: `${timestamp}-${prev.length}`,
+          audioUrl: historyAudioUrl,
+          format: audioFormat,
+          text: targetText.trim(),
+          timestamp,
+        },
+        ...prev,
+      ].slice(0, 6));
     } catch (err) {
       console.error(err);
       setError(err.message || "生成失败，请检查网络或后端配置");
     }
+  };
+
+  const handleClearHistory = () => {
+    historyUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    historyUrlsRef.current = [];
+    setGenerationHistory([]);
   };
 
   return (
@@ -217,6 +246,12 @@ export default function App() {
             audioUrl={audioResultUrl}
             downloadTimestamp={downloadTimestamp}
             audioFormat={audioFormat}
+          />
+
+          <GenerationHistory
+            items={generationHistory}
+            onReuseText={setTargetText}
+            onClear={handleClearHistory}
           />
 
         </div>

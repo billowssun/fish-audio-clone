@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Loader2, Play, Pause, Plus, Globe } from 'lucide-react';
 import { proxyAudioUrl } from '../utils/proxy';
 
@@ -11,37 +11,62 @@ export default function VoiceExplorer({ onSelect }) {
   const [playingId, setPlayingId] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [nextPage, setNextPage] = useState(0);
   const audioRef = useRef(null);
-  const searchTimer = useRef(null);
+  const abortRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (!audioRef.current) return;
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.src = '';
+    };
+  }, []);
 
   const searchVoices = async (q, page = 0) => {
-    if (!q.trim()) return;
+    const trimmedQuery = q.trim();
+    if (!trimmedQuery) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
 
     try {
-      const url = `/api/fish/model?language=zh&page_size=20&title=${encodeURIComponent(q.trim())}&page=${page}`;
-      const res = await fetch(url);
+      const url = `/api/fish/model?language=zh&page_size=20&title=${encodeURIComponent(trimmedQuery)}&page=${page}`;
+      const res = await fetch(url, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (controller.signal.aborted) return;
 
+      const items = data.items || [];
       if (page === 0) {
-        setVoices(data.items || []);
+        setVoices(items);
       } else {
-        setVoices(prev => [...prev, ...(data.items || [])]);
+        setVoices(prev => [...prev, ...items]);
       }
-      setHasMore(data.has_more && data.items?.length > 0);
+      setHasMore(Boolean(data.has_more && items.length > 0));
+      setNextPage(page + 1);
       setSearched(true);
       setExpanded(true);
     } catch (err) {
-      setError('搜索失败: ' + err.message);
+      if (err.name !== 'AbortError') {
+        setError('搜索失败: ' + err.message);
+      }
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
   const handleSearch = () => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
     searchVoices(query, 0);
   };
 
@@ -50,7 +75,8 @@ export default function VoiceExplorer({ onSelect }) {
   };
 
   const handleLoadMore = () => {
-    searchVoices(query, voices.length / 20);
+    if (loading || !hasMore) return;
+    searchVoices(query, nextPage);
   };
 
   const handlePreview = (voiceId, sampleUrl) => {
@@ -60,7 +86,11 @@ export default function VoiceExplorer({ onSelect }) {
       setPlayingId(null);
       return;
     }
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+    }
     const audio = new Audio(proxyAudioUrl(sampleUrl));
     audioRef.current = audio;
     audio.onended = () => setPlayingId(null);
@@ -85,7 +115,6 @@ export default function VoiceExplorer({ onSelect }) {
         </button>
       ) : (
         <div className="space-y-3">
-          {/* 搜索栏 */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -111,14 +140,12 @@ export default function VoiceExplorer({ onSelect }) {
             <p className="text-sm text-red-500">{error}</p>
           )}
 
-          {/* 搜索结果数量 */}
           {searched && !loading && (
             <p className="text-xs text-slate-400">
               {voices.length > 0 ? `找到 ${voices.length} 个匹配的音色` : '未找到匹配的音色，试试其他关键词'}
             </p>
           )}
 
-          {/* 音色列表 */}
           {voices.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[500px] overflow-y-auto pr-1">
               {voices.map((voice) => {
@@ -177,7 +204,6 @@ export default function VoiceExplorer({ onSelect }) {
             </div>
           )}
 
-          {/* 加载更多 */}
           {hasMore && (
             <button
               onClick={handleLoadMore}
@@ -188,7 +214,6 @@ export default function VoiceExplorer({ onSelect }) {
             </button>
           )}
 
-          {/* 收起 */}
           {expanded && (
             <button
               onClick={() => setExpanded(false)}

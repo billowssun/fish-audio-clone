@@ -1,54 +1,56 @@
+import { corsHeaders, handleOptions, jsonResponse, rejectInvalidMethod, rejectInvalidOrigin } from '../_shared.js';
+
 export const config = {
   runtime: 'edge',
 };
 
+function isAllowedFishAudioAsset(targetUrl) {
+  const parsedTarget = new URL(targetUrl);
+  const targetHost = parsedTarget.hostname;
+  const isFishAudioHost = targetHost === 'fish.audio' || targetHost.endsWith('.fish.audio');
+
+  return parsedTarget.protocol === 'https:' && isFishAudioHost;
+}
+
 export default async function handler(req) {
+  const originError = rejectInvalidOrigin(req);
+  if (originError) return originError;
+
+  if (req.method === 'OPTIONS') {
+    return handleOptions(['GET', 'OPTIONS']);
+  }
+
+  const methodError = rejectInvalidMethod(req, ['GET']);
+  if (methodError) return methodError;
+
   const url = new URL(req.url);
   const targetUrl = url.searchParams.get('url');
 
   if (!targetUrl) {
-    return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Missing url parameter' }, 400);
   }
 
-  // Only proxy Fish Audio-owned HTTPS assets. Fish may return different
-  // subdomains for public samples, so keep the boundary at the parent domain.
   try {
-    const parsedTarget = new URL(targetUrl);
-    const targetHost = parsedTarget.hostname;
-    const isFishAudioHost = targetHost === 'fish.audio' || targetHost.endsWith('.fish.audio');
-
-    if (parsedTarget.protocol !== 'https:' || !isFishAudioHost) {
-      return new Response(JSON.stringify({ error: 'Forbidden host' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!isAllowedFishAudioAsset(targetUrl)) {
+      return jsonResponse({ error: 'Forbidden host' }, 403);
     }
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid URL' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Invalid URL' }, 400);
   }
 
   try {
     const response = await fetch(targetUrl);
 
-    const headers = new Headers();
-    headers.set('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
-    headers.set('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
-    headers.set('Cache-Control', 'public, max-age=86400');
+    const headers = new Headers(corsHeaders({
+      'Content-Type': response.headers.get('Content-Type') || 'audio/mpeg',
+      'Cache-Control': 'public, max-age=86400',
+    }));
 
     return new Response(response.body, {
       status: response.status,
       headers,
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: err.message }, 500);
   }
 }
